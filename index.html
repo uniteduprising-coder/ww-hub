@@ -46,7 +46,8 @@ button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}a{
 const HASH="e71b5bb2b178aa4b8b637776b652a2b6699e8a047fe12e7def7c1c57ce767945";
 const GIST="https://gist.githubusercontent.com/uniteduprising-coder/b2cc0c037e036194e55658bf89d36a3d/raw/state.json";
 const EDGE="https://tkt.uniteduprising.com";
-const RELAY="https://ntfy.sh/tkt-relay-b1d8dc922fef1f7c23fb";
+const RELAY="https://ntfy.sh/effi-team-b1d8dc922fef1f7c23fb";
+const LOCAL="http://127.0.0.1:3047/";
 let lastGrok=0;
 const HOPS={new:["open"],open:["review","block"],review:["done","open"],block:["open"],done:[]};
 const LANES=["new","open","review","block","done"];
@@ -84,6 +85,7 @@ function apply(ev){
     state.messages.push({id:nid(),channel:ev.channel,user:user,text,ts:new Date().toISOString()});
     if(state.messages.length>800)state.messages=state.messages.slice(-800);
     fetch(RELAY,{method:"POST",headers:{Title:"TKT","X-Tags":"tkt"},body:"#"+ev.channel+" "+text}).catch(()=>{});
+    fetch(LOCAL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({channel:ev.channel,text})}).catch(()=>{});
   }
   else if(ev.type==="ticket.add"&&ev.title.trim().length>=4){const id=1+Math.max(0,...state.tickets.map(t=>t.id));state.tickets.push({id,title:ev.title,body:ev.body||"",status:"new",pri:Number(ev.pri)||2,ts:new Date().toISOString()});}
   else if(ev.type==="ticket.hop"){const t=state.tickets.find(x=>x.id===ev.id); if(t&&hopOk(t.status,ev.to)){t.status=ev.to;t.ts=new Date().toISOString();}}
@@ -123,7 +125,7 @@ function draw(){
   let pane="";
   if(view==="tickets") pane=`<form class="form-row" id="tf"><input class="field" name="title" placeholder="New ticket"/><input class="field" name="body" placeholder="Body"/><button class="go">Open</button></form>
     <div class="board">${LANES.map(l=>{const cards=state.tickets.filter(t=>t.status===l);return `<section class="lane"><h3>${l} ${cards.length}</h3>${cards.map(t=>`<article class="card"><b>T${t.id}</b><h4>${h(t.title)}</h4><p>${h(t.body||"")}</p>${(HOPS[t.status]||[]).map(to=>`<button data-hop="${t.id}:${to}">${to}</button>`).join("")}</article>`).join("")}</section>`;}).join("")}</div>`;
-  else if(view==="chat") pane=`<div class="stream"><article><b>system</b><p>LIVE relays to Grok. Replies show up here as grok. Keep the Grok TUI session open on the PC.</p></article>${msgs.map(m=>`<article><b>${h(m.user)}</b> <span style="color:var(--ledger);font-size:11px">${h(String(m.ts).replace("T"," ").slice(0,16))}</span><p>${h(m.text)}</p></article>`).join("")}</div><form class="composer" id="cf"><input id="ci" placeholder="Message Grok on #${channel}"/><button class="go">Send</button></form>`;
+  else if(view==="chat") pane=`<div class="stream"><article><b>system</b><p>You ↔ Grok on this phone. Keep the PC on. Replies show as grok.</p></article>${msgs.map(m=>`<article><b>${h(m.user)}</b> <span style="color:var(--ledger);font-size:11px">${h(String(m.ts).replace("T"," ").slice(0,16))}</span><p>${h(m.text)}</p></article>`).join("")}</div><form class="composer" id="cf"><input id="ci" placeholder="Talk to Grok on #${channel}"/><button class="go">Send</button></form>`;
   else if(view==="pair") pane=`<div class="form-row"><input class="field" id="pn" placeholder="Pair name"/><input type="file" accept="image/*" id="fa"/><input type="file" accept="image/*" id="fb"/><button class="go" id="ps">Save pair</button></div>
     <div class="pair"><div><small>A</small><img id="ia" src="${pairA||""}" alt="A"/></div><div><small>B</small><img id="ib" src="${pairB||""}" alt="B" style="opacity:${mix/100}"/></div></div>
     <div class="mix"><input type="range" id="mx" min="0" max="100" value="${mix}"/> mix ${mix}%</div>
@@ -167,6 +169,7 @@ function draw(){
       const r=await fetch(RELAY+"/json?poll=1&since="+lastGrok,{cache:"no-store"});
       if(!r.ok) return;
       const lines=(await r.text()).split("\n").filter(Boolean);
+      let drew=false;
       for(const line of lines){
         let ev; try{ev=JSON.parse(line);}catch{continue;}
         if(ev.event!=="message") continue;
@@ -175,9 +178,9 @@ function draw(){
         const text=String(ev.message||"").slice(0,4000);
         if(!text) continue;
         state.messages.push({id:"g"+ev.id,channel:channel,user:"grok",text,ts:new Date((t||Date.now()/1000)*1000).toISOString()});
-        save();
+        drew=true;
       }
-      draw();
+      if(drew) save();
     }catch(e){}
   }
   setInterval(pullGrok,4000);
