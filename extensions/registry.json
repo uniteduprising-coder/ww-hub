@@ -1,0 +1,19 @@
+{
+  "app": "TKT",
+  "addons": [
+    {"id": "tickets", "label": "Tickets", "layer": "board", "on": true},
+    {"id": "chat", "label": "Chat", "layer": "live", "on": true},
+    {"id": "pair", "label": "Image pair", "layer": "vision", "on": true},
+    {"id": "ingest", "label": "Ingest", "layer": "data", "on": true},
+    {"id": "stack", "label": "Stack", "layer": "edge", "on": true}
+  ],
+  "resources": [
+    {"id": "cf-zone", "kind": "cloudflare", "name": "uniteduprising.com", "note": "Workers: vesper, enki, geo-api, earth"},
+    {"id": "cf-vesper", "kind": "cloudflare", "name": "vesper.uniteduprising.com", "url": "https://vesper.uniteduprising.com"},
+    {"id": "cf-enki", "kind": "cloudflare", "name": "enki.uniteduprising.com", "url": "https://enki.uniteduprising.com"},
+    {"id": "cf-geo", "kind": "cloudflare", "name": "geo-api.uniteduprising.com", "url": "https://geo-api.uniteduprising.com"},
+    {"id": "cf-earth", "kind": "cloudflare", "name": "earth.uniteduprising.com", "url": "https://earth.uniteduprising.com"},
+    {"id": "gh-pages", "kind": "github", "name": "TKT live", "url": "https://uniteduprising-coder.github.io/ww-hub/"},
+    {"id": "nor", "kind": "effi", "name": "NOR ingest", "path": "C:\\\\Users\\\\User\\\\Projects\\\\effi-nor-gated-dataset-20260817\\\\ingest.py"}
+  ]
+}

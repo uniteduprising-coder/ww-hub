@@ -1,6 +1,6 @@
 {
-  "name": "Words Worth Hub",
-  "short_name": "WW Hub",
+  "name": "TKT",
+  "short_name": "TKT",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
