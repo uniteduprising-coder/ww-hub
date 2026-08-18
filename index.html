@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#080B10"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Words Worth Hub</title>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" href="afi.svg"/>
+<style>
+:root{--ink:#080B10;--graphite:#11161D;--panel:#171D25;--white:#F7F7F4;--ledger:#9AA4B2;--signal:#C6FF00;--blue:#2F6BFF;--line:rgba(154,164,178,.28)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--ink);color:var(--white);font-family:"Segoe UI",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}a{color:var(--signal)}
+.app{display:flex;height:100dvh;overflow:hidden}
+.rail{width:64px;background:var(--graphite);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px}
+.rail img{width:36px;height:36px}.rail button{width:44px;height:44px;border:0;border-radius:12px;background:transparent;color:var(--ledger)}.rail button.on{background:var(--panel);color:var(--signal)}
+.col{width:230px;background:var(--graphite);border-right:1px solid var(--line);display:flex;flex-direction:column}
+.col h2{margin:0;padding:16px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ledger)}
+.chan{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 16px;color:var(--white)}.chan.on{background:var(--panel)}.chan small{display:block;color:var(--ledger);font-size:11px}
+.mark{color:var(--signal)}.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--graphite)}
+.stream{flex:1;overflow:auto;padding:16px}.composer,.form-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);flex-wrap:wrap}
+.composer input,.field{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.go{background:var(--signal);color:var(--ink);border:0;border-radius:10px;padding:10px 14px;font-weight:600}
+.board{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:8px;padding:12px;overflow:auto}
+.lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;min-height:30vh}
+.card{background:var(--graphite);border-radius:8px;padding:8px;margin:8px 0;border-left:3px solid var(--signal)}
+.card button{margin:4px 4px 0 0;background:transparent;border:1px solid var(--line);border-radius:8px;padding:4px 8px;color:var(--ledger);font-size:11px}
+.login{min-height:100dvh;display:grid;place-items:center;background:radial-gradient(800px 360px at 20% -10%,rgba(198,255,0,.08),transparent),var(--ink)}
+.box{width:min(400px,92vw);background:var(--graphite);border:1px solid var(--line);border-radius:16px;padding:24px}
+.box input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0 12px}
+.err{color:#ff8a7a}.item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 16px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--signal);display:inline-block;margin-right:6px}
+@media(max-width:860px){.col{display:none}.board{grid-template-columns:1fr}.rail{width:56px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const HASH="e71b5bb2b178aa4b8b637776b652a2b6699e8a047fe12e7def7c1c57ce767945";
+const GIST="https://gist.githubusercontent.com/uniteduprising-coder/b2cc0c037e036194e55658bf89d36a3d/raw/state.json";
+const HOPS={new:["open"],open:["review","block"],review:["done","open"],block:["open"],done:[]};
+const LANES=["new","open","review","block","done"];
+const seed=()=>({rev:1,tickets:[
+  {id:4,title:"Drive storage cut one-third",body:"KEEP 91.68 GB. User call required.",status:"block",pri:3,ts:"2026-08-18T00:53:54Z"},
+  {id:68,title:"Words Worth Hub live",body:"PWA hub on S24 / iPad / PC.",status:"open",pri:3,ts:"2026-08-18T05:00:00Z"}
+],messages:[{id:"m0",channel:"general",user:"system",text:"Words Worth Hub is live.",ts:new Date().toISOString()}],plans:[{id:"t4",title:"T4 user call",when:"2026-08-18",note:"Do not delete KEEP set."}],shares:[],presence:[]});
+
+let user=null, view="chat", channel="general", state=null, err="", peers=[];
+
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");}
+function save(){localStorage.setItem("ww-hub-state",JSON.stringify(state));broadcast();}
+function loadLocal(){try{return JSON.parse(localStorage.getItem("ww-hub-state"));}catch{return null;}}
+function nid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function hopOk(from,to){return (HOPS[from]||[]).includes(to);}
+
+function apply(ev){
+  if(ev.type==="chat"&&ev.text.trim()){state.messages.push({id:nid(),channel:ev.channel,user:user,text:ev.text.slice(0,4000),ts:new Date().toISOString()}); if(state.messages.length>800)state.messages=state.messages.slice(-800);}
+  else if(ev.type==="ticket.add"&&ev.title.trim().length>=4){const id=1+Math.max(0,...state.tickets.map(t=>t.id));state.tickets.push({id,title:ev.title,body:ev.body||"",status:"new",pri:Number(ev.pri)||2,ts:new Date().toISOString()});}
+  else if(ev.type==="ticket.hop"){const t=state.tickets.find(x=>x.id===ev.id); if(t&&hopOk(t.status,ev.to)){t.status=ev.to;t.ts=new Date().toISOString();}}
+  else if(ev.type==="plan.add"&&ev.title.trim()){state.plans.push({id:nid(),title:ev.title,when:ev.when||"",note:ev.note||""});}
+  else if(ev.type==="plan.del"){state.plans=state.plans.filter(p=>p.id!==ev.id);}
+  else if(ev.type==="share.add"&&ev.name.trim()){state.shares.push({id:nid(),name:ev.name,url:ev.url||"",note:ev.note||"",user});}
+  state.rev=(state.rev||0)+1; save(); draw();
+}
+
+let conn=null;
+function broadcast(){
+  try{ if(conn) conn.send({kind:"state",state}); }catch(e){}
+}
+function mesh(){
+  if(!window.Peer) return;
+  const room="ww-hub-chance-20260818";
+  const peer=new Peer(undefined,{debug:0});
+  peer.on("open", id=>{
+    const host=new Peer(room,{debug:0});
+    host.on("error", ()=>{
+      const c=peer.connect(room);
+      c.on("open",()=>{conn=c; c.on("data",onPeer);});
+    });
+    host.on("connection", c=>{conn=c; c.on("data",onPeer); c.on("open",()=>c.send({kind:"state",state}));});
+  });
+}
+function onPeer(msg){ if(msg&&msg.kind==="state"&&msg.state&&(msg.state.rev||0)>=(state.rev||0)){state=msg.state; localStorage.setItem("ww-hub-state",JSON.stringify(state)); draw();}}
+
+function h(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+function draw(){
+  const root=document.getElementById("root");
+  if(!user){
+    root.innerHTML=`<div class="login"><form class="box" id="lf"><img src="afi.svg" width="44" height="44" alt="AFI"/><h1>Words Worth <span class="mark">Hub</span></h1><p>Studio chat · tickets · plan · share</p><label>User</label><input name="user" value="chance" autocomplete="username"/><label>Password</label><input name="password" type="password" autocomplete="current-password"/>${err?`<p class="err">${h(err)}</p>`:""}<button class="go" type="submit">Enter</button><p style="color:var(--ledger);font-size:12px">S24: Chrome menu → Add to Home screen.<br/>iPad: Share → Add to Home Screen.<br/>PC: install icon in the address bar.</p></form></div>`;
+    document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target);if(fd.get("user")!=="chance"){err="Login refused.";draw();return;}if(await sha(fd.get("password"))!==HASH){err="Login refused.";draw();return;}user="chance";err="";draw();mesh();};
+    return;
+  }
+  const msgs=(state.messages||[]).filter(m=>m.channel===channel);
+  const pane=view==="chat"?`
+    <div class="stream">${msgs.map(m=>`<article><b>${h(m.user)}</b> <span style="color:var(--ledger);font-size:11px">${h(String(m.ts).replace("T"," ").slice(0,16))}</span><p>${h(m.text)}</p></article>`).join("")}</div>
+    <form class="composer" id="cf"><input id="ci" placeholder="Message #${channel}"/><button class="go">Send</button></form>`:
+  view==="tickets"?`
+    <form class="form-row" id="tf"><input class="field" name="title" placeholder="New ticket"/><input class="field" name="body" placeholder="Body"/><button class="go">Open</button></form>
+    <div class="board">${LANES.map(l=>{const cards=state.tickets.filter(t=>t.status===l);return `<section class="lane"><h3>${l} ${cards.length}</h3>${cards.map(t=>`<article class="card"><b>T${t.id}</b><h4>${h(t.title)}</h4><p>${h(t.body||"")}</p>${(HOPS[t.status]||[]).map(to=>`<button data-hop="${t.id}:${to}">${to}</button>`).join("")}</article>`).join("")}</section>`;}).join("")}</div>`:
+  view==="plan"?`
+    <form class="form-row" id="pf"><input class="field" name="title" placeholder="Plan item"/><input class="field" type="date" name="when"/><button class="go">Add</button></form>
+    ${state.plans.map(p=>`<article class="item"><b>${h(p.title)}</b><p>${h(p.when||"")} ${h(p.note||"")}</p><button data-del="${p.id}">Remove</button></article>`).join("")}`:
+    `<form class="form-row" id="sf"><input class="field" name="name" placeholder="Name"/><input class="field" name="url" placeholder="https://"/><button class="go">Share</button></form>
+    ${state.shares.map(s=>`<article class="item"><b>${h(s.name)}</b><p>${h(s.note||"")}</p>${s.url?`<a href="${h(s.url)}">${h(s.url)}</a>`:""}</article>`).join("")}`;
+  root.innerHTML=`<div class="app"><aside class="rail"><img src="afi.svg" alt="AFI"/>${[["chat","C"],["tickets","T"],["plan","P"],["share","S"]].map(([id,l])=>`<button class="${view===id?"on":""}" data-view="${id}">${l}</button>`).join("")}</aside>
+  <aside class="col"><h2>${view}</h2>${view==="chat"?["general","tickets","planning","bridge"].map(id=>`<button class="chan ${channel===id?"on":""}" data-ch="${id}">#${id}<small>live</small></button>`).join(""):`<div class="chan">chance<small>owner</small></div>`}</aside>
+  <section class="main"><header class="top"><div><h1>Words Worth <span class="mark">${view==="chat"?"#"+channel:view}</span></h1><span>rev ${state.rev||0} · T4 stays block</span></div><button class="go" id="out">Sign out</button></header>${pane}</section></div>`;
+  root.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;draw();});
+  root.querySelectorAll("[data-ch]").forEach(b=>b.onclick=()=>{channel=b.dataset.ch;draw();});
+  const out=document.getElementById("out"); if(out) out.onclick=()=>{user=null;draw();};
+  const cf=document.getElementById("cf"); if(cf) cf.onsubmit=e=>{e.preventDefault();apply({type:"chat",channel,text:document.getElementById("ci").value});};
+  const tf=document.getElementById("tf"); if(tf) tf.onsubmit=e=>{e.preventDefault();const fd=new FormData(tf);apply({type:"ticket.add",title:fd.get("title"),body:fd.get("body")});};
+  const pf=document.getElementById("pf"); if(pf) pf.onsubmit=e=>{e.preventDefault();const fd=new FormData(pf);apply({type:"plan.add",title:fd.get("title"),when:fd.get("when")});};
+  const sf=document.getElementById("sf"); if(sf) sf.onsubmit=e=>{e.preventDefault();const fd=new FormData(sf);apply({type:"share.add",name:fd.get("name"),url:fd.get("url")});};
+  root.querySelectorAll("[data-hop]").forEach(b=>b.onclick=()=>{const [id,to]=b.dataset.hop.split(":");apply({type:"ticket.hop",id:Number(id),to});});
+  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>apply({type:"plan.del",id:b.dataset.del}));
+}
+
+(async()=>{
+  state=loadLocal()||seed();
+  try{const r=await fetch(GIST,{cache:"no-store"}); if(r.ok){const g=await r.json(); if(g&&Array.isArray(g.tickets)) state={...seed(),...g,rev:Math.max(state.rev||0,g.rev||0)};}}catch(e){}
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  draw();
+})();
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+</body>
+</html>

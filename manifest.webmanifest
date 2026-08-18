@@ -1,0 +1,10 @@
+{
+  "name": "Words Worth Hub",
+  "short_name": "WW Hub",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080B10",
+  "theme_color": "#080B10",
+  "icons": [{ "src": "afi.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
