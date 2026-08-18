@@ -137,7 +137,7 @@ function draw(){
   else pane=`<form class="form-row" id="sf"><input class="field" name="name" placeholder="Name"/><input class="field" name="url" placeholder="https://"/><button class="go">Share</button></form>${(state.shares||[]).map(s=>`<article class="item"><b>${h(s.name)}</b><p>${h(s.note||"")}</p>${s.url?`<a href="${h(s.url)}">${h(s.url)}</a>`:""}</article>`).join("")}`;
 
   root.innerHTML=`<div class="app"><aside class="rail"><div class="brand">TKT</div>${VIEWS.map(([id,l])=>`<button class="${view===id?"on":""}" data-view="${id}">${l}</button>`).join("")}</aside>
-  <aside class="col"><h2>${view}</h2>${view==="chat"?["general","tickets","planning","bridge"].map(id=>`<button class="chan ${channel===id?"on":""}" data-ch="${id}">#${id}<small>live</small></button>`).join(""):`<div class="chan">chance<small>owner</small></div><div class="chan">edge<small>cloudflare zone live</small></div>`}</aside>
+  <aside class="col"><h2>${view}</h2>${view==="chat"?["general","tickets","planning","bridge"].map(id=>`<button class="chan ${channel===id?"on":""}" data-ch="${id}">#${id}<small>live</small></button>`).join("")+`<div class="chan"><span class="dot"></span>grok<small>in TKT</small></div><div class="chan"><span class="dot"></span>chance<small>you</small></div>`:`<div class="chan"><span class="dot"></span>grok<small>in TKT</small></div><div class="chan">chance<small>owner</small></div>`}</aside>
   <section class="main"><header class="top"><div><h1>TKT <span class="mark">${view}</span></h1><span>rev ${state.rev||0} · pair/ingest add-ons · T4 block</span></div><button class="go" id="out">Sign out</button></header>${pane}</section></div>`;
 
   root.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;draw();});
@@ -164,26 +164,33 @@ function draw(){
   try{const r=await fetch(GIST,{cache:"no-store"}); if(r.ok){const g=await r.json(); if(g&&Array.isArray(g.tickets)) state={...seed(),...g,pairs:state.pairs||[],ingest:state.ingest||[],rev:Math.max(state.rev||0,g.rev||0)};}}catch(e){}
   try{const e=await fetch(EDGE+"/health"); if(e.ok) state.edge="up";}catch(e){state.edge="pages-only";}
   if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if(!state.messages.some(m=>m.user==="grok")){
+    state.messages.push({id:"g-hello",channel:"general",user:"grok",text:"I am in TKT. Send here. This PC stays on.",ts:new Date().toISOString()});
+  }
+  function hearGrok(ev){
+    if(!ev||ev.event!=="message") return;
+    if(String(ev.title||"").toUpperCase()!=="GROK") return;
+    const text=String(ev.message||"").slice(0,4000);
+    if(!text) return;
+    const id="g"+ev.id;
+    if(state.messages.some(m=>m.id===id)) return;
+    state.messages.push({id,channel:channel,user:"grok",text,ts:new Date((Number(ev.time)||Date.now()/1000)*1000).toISOString()});
+    save(); draw();
+  }
+  try{
+    const es=new EventSource(RELAY+"/sse");
+    es.onmessage=e=>{try{hearGrok(JSON.parse(e.data));}catch(err){}};
+  }catch(e){}
   async function pullGrok(){
     try{
-      const r=await fetch(RELAY+"/json?poll=1&since="+lastGrok,{cache:"no-store"});
+      const r=await fetch(RELAY+"/json?poll=1&since=1h",{cache:"no-store"});
       if(!r.ok) return;
       const lines=(await r.text()).split("\n").filter(Boolean);
-      let drew=false;
-      for(const line of lines){
-        let ev; try{ev=JSON.parse(line);}catch{continue;}
-        if(ev.event!=="message") continue;
-        const t=Number(ev.time||0); if(t>lastGrok) lastGrok=t;
-        if(String(ev.title||"").toUpperCase()!=="GROK") continue;
-        const text=String(ev.message||"").slice(0,4000);
-        if(!text) continue;
-        state.messages.push({id:"g"+ev.id,channel:channel,user:"grok",text,ts:new Date((t||Date.now()/1000)*1000).toISOString()});
-        drew=true;
-      }
-      if(drew) save();
+      for(const line of lines){try{hearGrok(JSON.parse(line));}catch(err){}}
     }catch(e){}
   }
-  setInterval(pullGrok,4000);
+  setInterval(pullGrok,5000);
+  pullGrok();
   draw();
 })();
 </script>
